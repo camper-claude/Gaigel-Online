@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f6b4f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gaigel">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gaigel-Trainer</title>
+<style>
+:root{--bg:#f3eee3;--fg:#241f1a;--card:#fffdf8;--bd:#cfc6b4;--felt:#2f6b4f;--ac:#a97500;--pan:#e8e0cf;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171410;--fg:#eee6d6;--card:#2a251d;--bd:#4a4234;--felt:#1f4a37;--ac:#c58a00;--pan:#26211a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171410;--fg:#eee6d6;--card:#2a251d;--bd:#4a4234;--felt:#1f4a37;--ac:#c58a00;--pan:#26211a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+#app{max-width:480px;margin:0 auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+nav{display:flex;gap:6px}
+button{font:inherit;color:var(--fg)}
+nav button{flex:1;padding:8px 4px;border:1px solid var(--bd);border-radius:10px;background:var(--pan);font-size:13px}
+nav .on{background:var(--ac);color:#fff;border-color:var(--ac)}
+#bar{display:flex;justify-content:space-between;align-items:center;background:var(--pan);border-radius:10px;padding:8px 14px;font-size:13px;text-align:center}
+#bar b{display:block;font-size:22px}
+#top{display:flex;gap:4px;justify-content:center;align-items:center;min-height:44px;font-size:13px}
+.bk{width:26px;height:38px;border-radius:4px;background:repeating-linear-gradient(45deg,#7a1f2b,#7a1f2b 4px,#9b2d3b 4px,#9b2d3b 8px)}
+.bk.bg{width:58px;height:84px;border-radius:8px}
+#tbl{background:var(--felt);border-radius:14px;min-height:150px;display:flex;align-items:center;justify-content:center;gap:18px;color:#fff;padding:10px}
+.slot{text-align:center;font-size:12px}
+#msg{min-height:48px;background:var(--pan);border-radius:10px;padding:8px 12px;font-size:14px}
+#hand{display:flex;gap:6px;justify-content:center;min-height:92px;padding-top:6px}
+.c{width:58px;height:84px;border:1px solid var(--bd);border-radius:8px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.c b{font-size:24px;line-height:1.1}.c i{font-style:normal;font-size:24px;line-height:1.1}
+.c.sm{width:46px;height:66px;cursor:default}.c.sm b,.c.sm i{font-size:18px}
+.c.dis{opacity:.4}.c.hint{outline:3px solid var(--ac);transform:translateY(-6px)}
+#btns{display:flex;gap:6px}
+#btns button,.b{flex:1;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--pan)}
+.b{background:var(--ac);color:#fff;border-color:var(--ac)}
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:16px;z-index:9}
+#ov.on{display:flex}
+.box{background:var(--bg);border-radius:14px;padding:18px;max-width:420px;width:100%}
+.ex{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0}.ex div{text-align:center}.ex small{display:block;font-size:11px}
+#log{font-size:11px;opacity:.7;max-height:7em;overflow:auto;line-height:1.4;padding:0 4px}
+.box h3{margin:0 0 8px}.box p{margin:6px 0}.row{display:flex;gap:8px;margin-top:12px}
+</style></head><body>
+<div id="app">
+<nav><button onclick="setL(1)">1 Lernen</button><button onclick="setL(2)">2 Gegen PC</button><button onclick="setL(3)">3 Zu zweit</button><button onclick="setL(4)">4 Online</button></nav>
+<div id="bar"></div><div id="top"></div><div id="tbl"></div><div id="msg"></div><div id="hand"></div>
+<div id="btns"><button id="hb" onclick="hint()">💡 Tipp</button><button onclick="intro(0)">📖 Regeln</button><button onclick="newGame()">🔄 Neu</button></div>
+<div id="log"></div>
+</div>
+<div id="ov"></div>
+<script>
+const SU=['Eichel','Laub','Herz','Schellen'],SG=['🌰','🍃','♥','🔔'],SC=['#8a5a22','#2e8b3a','#d32f2f','#c58a00'];
+const RL=['7','U','O','K','10','A'],RP=[0,2,3,4,10,11],RN=['Sieben','Unter','Ober','König','Zehn','Ass'];
+const $=id=>document.getElementById(id),ov=$('ov'),pts=c=>RP[c.r],cn=c=>SU[c.s]+'-'+RN[c.r];
+let G=null,L=1,gid=0,seen={},shown=-1,NM=['',''],me=0,ws=null,bye=0,RS={},rd=0,endShown=0;
+const nm=p=>L==4?NM[p]:L==3?'Spieler '+(p+1):p?'Computer':'Du',hu=p=>L>=3||p==0;
+const later=(f,ms)=>{const g=gid;setTimeout(()=>g==gid&&f(),ms)};
+const actor=()=>G.tab[G.lead]?1-G.lead:G.lead;
+const srt=h=>h.sort((a,b)=>a.s-b.s||b.r-a.r);
+const card=(c,cls,x='')=>`<button class="c ${cls}" style="color:${SC[c.s]}"${x}><b>${RL[c.r]}</b><i>${SG[c.s]}</i></button>`;
+const verb=(p,a,b)=>nm(p)=='Du'?a:b;
+function say(t){G.msg=t;$('msg').textContent=t}
+function modal(h,btns){ov.innerHTML=`<div class="box">${h}<div class="row">${btns.map((b,i)=>`<button class="b" data-b="${i}">${b[0]}</button>`).join('')}</div></div>`;ov.className='on';ov.onclick=e=>{const i=e.target.dataset.b;if(i!=null){ov.className='';btns[i][1]&&btns[i][1]()}}}
+const ex=(a,n='')=>`<div class="ex">${a.map(([s,r,t])=>`<div>${card({s,r},'sm')}<small>${t}</small></div>`).join('')}</div>${n?`<p><small>${n}</small></p>`:''}`;
+const S=[
+['S Ziel','Gaigel isch a schwäbisches Stichspiel. Wer als Erschter 101 Augen (Punkte) hot, hot gwonna. Augen gibt’s fir Stich ond fir Ansaga.'],
+['D Karta','Mir spielet mit 48 Karta: zwoi Spiel mit 7, Unter, Ober, König, 10 ond Ass en vier Farba. Vo hoch noch nieder: A, 10, K, O, U, 7. Drunter siehsch, was jede Karta wert isch (Augen).',ex([[2,5,'Ass 11'],[2,4,'Zehner 10'],[2,3,'König 4'],[2,2,'Ober 3'],[2,1,'Unter 2'],[2,0,'Siebener 0']])],
+['Dr Stich','Oiner spielt a Karta aus, dr ander leit oine drzu. D höhere Karta vo dr ausgspielta Farb gwinnt. Dr Gwinner kriagt d Augen vo boide Karta, zieht als Erschter noch ond spielt als Nägschter aus.',ex([[2,1,'ausgspielt (2)'],[2,4,'gwinnt (10)']],'Zämma 12 Augen fir dr Gwinner.')],
+['Dr Trompf','D unterschte Karta vom Stapel sagt, was Trompf isch (stoht obe en dr Mitt). Trompf sticht älle andere Farba. Beispiel: Schellen isch Trompf.',ex([[0,5,'Eichel-Ass (11)'],[3,0,'Trompf-7 sticht!']],'Sogar a ganz kleiner Trompf schlägt s Ass vo ra andere Farb.')],
+['Ansaga','Hosch König ond Ober vo dr gleiche Farb ond scho en Stich gmacht, därfsch beim Ausspiela oine vo dene zwoi a Paar ansaga: 20 Augen, en Trompf sogar 40.',ex([[1,3,'König'],[1,2,'Ober']],'Des isch a Paar: 20 Augen (en Trompf 40).')],
+['Freie ond strenge Phas','Solang dr Stapel it leer isch, därfsch spiela, was d witt. Danoch: Farb bediena, wenn’s goht stecha, sonscht trompfa. Dr letzscht Stich bringt 10 Augen extra.'],
+['Los gohts','I erklär dr d wichtigschte Sacha glei em Spiel. Mit em Tipp-Knopf kriagsch jederzeit en Vorschlag.']];
+function intro(i,after){modal(`<h3>${S[i][0]}</h3><p>${S[i][1]}</p>${S[i][2]||''}<small>${i+1} / ${S.length}</small>`,[[i<S.length-1?'Weiter':'Los gohts',()=>i<S.length-1?intro(i+1,after):after&&after()]])}
+const NAMES=['Muggabatscher', 'Breschdlengsgselz', 'Brezelbeißer', 'Spätzleschwob', 'Maultäschle', 'Schupfnudl', 'Kehrwochakönig', 'Sauerkrautstampfer', 'Linsaspätzle', 'Zwiebelrostbrota', 'Äpfelbitzler', 'Moschdkopf', 'Moschdfässle', 'Kässpätzlesbrater', 'Gsälzbär', 'Hefezopf', 'Schlappadiggl', 'Dappschädl', 'Hennaschdall', 'Bruddler', 'Schaffer', 'Häusleboier', 'Pfennigfuchser', 'Kleckserle', 'Zuckerschnägg', 'Wengerter', 'Reblaus', 'Kartoffelsalatrührer', 'Schnäpsle', 'Bierdeggl', 'Stäffelesrutscher', 'Sparbüchsle', 'Zipfelmütz', 'Gummiboom', 'Spatzaschreck', 'Krautwickl', 'Saitewürschtle', 'Landjäger', 'Hoigabel', 'Dreggspatz', 'Bachabeißer', 'Fleckaschmied', 'Trollinger', 'Lemberger', 'Zwetschgakuacha', 'Gelbfüßler', 'Hasafuaß', 'Kuttlesack', 'Dinnede', 'Pfitzauf', 'Katzaglump', 'Mostbirnle', 'Zwiebelkuacha', 'Mädlesfänger', 'Wurschtzipfel'];
+const CH=['Scher','Stoi','Bapier'],TX=['D Scher schneidet s Bapier.','Dr Stoi schlägt d Scher.','S Bapier schlägt der Stoi.'];
+const send=o=>ws&&ws.readyState==1&&ws.send(JSON.stringify(o));
+const go=(p,c,a)=>L==4&&me==1?send({t:'mv',i:G.h[1].indexOf(c),a}):play(p,c,a);
+function sync(){if(L==4&&me==0)send({t:'snap',g:{h:[G.h[0].map(()=>null),G.h[1]],st:G.st.map(()=>null),sc:G.sc,tr:G.tr,lead:G.lead,tab:G.tab,over:G.over,res:G.res,msg:G.msg,log:G.log,ts:G.ts,win:G.win,cur:false}})}
+function showEnd(){const w=G.win,l=1-w;modal(`<h3>${L==4?nm(w)+' hot gwonna!':nm(w)+' '+verb(w,'gewinnst','gewinnt')+'!'}</h3><p>${G.sc[w]} zu ${G.sc[l]} Augen.${G.sc[l]<51?' Schneider!':''}</p>${L==1?'<p>Merk dr: Früah nieder Karta spiela, Paar uffheba ond Zehner ond Asse mit Trompf sichera.</p>':''}`,[['Neues Spiel',()=>newGame(L==4?l:0)]])}
+function lobby(){modal('<h3>Online spiela</h3><p>Mach a Spiel uff ond gib dein Mitspieler de Code – odr gib sein Code ei:</p><input id="rc" maxlength="4" placeholder="Code" style="width:100%;padding:10px;font:inherit;font-size:24px;text-align:center;text-transform:uppercase;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--fg)">',[['Spiel aufmache',()=>conn([...Array(4)].map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random()*24|0]).join(''),0)],['Mitspiela',()=>{const c=$('rc').value.toUpperCase().replace(/[^A-Z]/g,'');c.length==4?conn(c,1):lobby()}]])}
+function conn(code,role){me=role;NM=['',''];RS={};rd=0;G=null;gid++;bye=0;endShown=0;
+ try{ws=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host+'/ws?room='+code+'&role='+role)}catch(e){return modal('<p>Verbindung geht it.</p>',[['Zrück',lobby]])}
+ const w=ws;
+ w.onopen=()=>{role||modal(`<h3>Dei Code</h3><p style="font-size:34px;text-align:center;letter-spacing:6px"><b>${code}</b></p><p>Gib den Code dein Mitspieler. Mir wartet …</p>`,[['Abbreche',()=>setL(4)]])};
+ w.onmessage=e=>{try{onMsg(JSON.parse(e.data))}catch(x){}};
+ w.onclose=()=>{if(!bye&&ws==w)modal('<h3>Verbindung weg</h3>',[['Zrück',()=>setL(4)]])}}
+function nameStep(){const pool=NAMES.filter(x=>x!=NM[1-me]),n=pool[Math.random()*pool.length|0];
+ modal(`<h3>Wia willsch hoißa?</h3><p style="font-size:26px;text-align:center"><b>${n}</b></p>`,[['Oke, basst.',()=>{NM[me]=n;send({t:'name',n});NM[0]&&NM[1]?rpsAsk():modal('<p>Mir wartet uff dein Mitspieler …</p>',[])}],['Noi, anderschd.',nameStep]])}
+function rpsAsk(){modal(`<h3>Wer fängt a?</h3><p>${NM[0]} gega ${NM[1]}</p>`,CH.map((x,c)=>[x,()=>{(RS[rd]=RS[rd]||[null,null])[me]=c;send({t:'rps',c,r:rd});modal(`<p>Mir wartet uff ${NM[1-me]} …</p>`,[]);rpsCheck()}]))}
+function rpsCheck(){const r=RS[rd];if(!r||r[0]==null||r[1]==null)return;const[a,b]=r;
+ if(a==b)return modal(`<h3>Zwoimol ${CH[a]}.</h3><p>(Zwoi Domme, oin Gedanka)<br>Onentschieda. Nomml.</p>`,[['Nomml',()=>{rd++;rpsAsk()}]]);
+ const w=(a-b+3)%3==1?0:1;
+ modal(`<h3>${TX[r[w]]}</h3><p>${NM[w]} fängt a.</p>`,[['Los gohts',()=>{if(me==0)newGame(w);else if(!G)modal('<p>Mir wartet …</p>',[])}]])}
+function onMsg(m){const t=m.t;
+ if(t=='ready')nameStep();
+ else if(t=='name'){NM[1-me]=NAMES.includes(m.n)?m.n:'Gascht';if(NM[me])rpsAsk()}
+ else if(t=='rps'){(RS[m.r]=RS[m.r]||[null,null])[1-me]=(m.c|0)%3;if(m.r==rd)rpsCheck()}
+ else if(t=='snap'&&me==1){const f=!G;G=m.g;if(f)ov.className='';if(G.over){if(!endShown){endShown=1;render();showEnd()}}else if(endShown){endShown=0;ov.className=''}render()}
+ else if(t=='mv'&&me==0){if(G&&!G.over&&!G.res&&actor()==1){const c=G.h[1][m.i];if(c&&legal(1).includes(c))play(1,c,m.a&&canAnn(1,c)?1:0)}}
+ else if(t=='again'&&me==0)newGame(G&&G.win!=null?1-G.win:0);
+ else if(t=='left')modal('<h3>Dei Mitspieler isch weg.</h3>',[['Zrück',()=>setL(4)]]);
+ else if(t=='err')modal('<h3>'+(m.m||'Fehler')+'</h3>',[['Zrück',()=>setL(4)]])}
+function setL(n){if(ws){bye=1;ws.close();ws=null}L=n;seen={};gid++;G=null;shown=-1;document.querySelectorAll('nav button').forEach((b,i)=>b.className=i+1==n?'on':'');$('hb').style.display=n>=3?'none':'';n==1?intro(0,newGame):n==4?lobby():newGame()}
+function newGame(lead){if(L==4&&me==1)return send({t:'again'});gid++;const d=[];for(let k=0;k<2;k++)for(let s=0;s<4;s++)for(let r=0;r<6;r++)d.push({s,r});
+ for(let i=d.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}
+ G={h:[srt(d.splice(0,5)),srt(d.splice(0,5))],st:d,sc:[0,0],tr:[0,0],log:[],lead:lead|0,tab:[null,null],over:false,res:false,cur:false,msg:L==4?nm(lead|0)+' fängt a.':nm(0)+' '+verb(0,'spielst','spielt')+' aus.'};
+ G.ts=d[d.length-1].s;shown=-1;ov.className='';next()}
+function legal(p){const h=G.h[p],led=p!=G.lead?G.tab[G.lead]:null;if(!led||G.st.length)return h;
+ const same=h.filter(c=>c.s==led.s);if(same.length){const hi=same.filter(c=>c.r>led.r);return hi.length?hi:same}
+ const t=h.filter(c=>c.s==G.ts);return t.length?t:h}
+const pair=(p,c)=>(c.r==2||c.r==3)&&G.h[p].some(x=>x.s==c.s&&x.r==(c.r==2?3:2));
+const canAnn=(p,c)=>p==G.lead&&!G.tab[p]&&G.tr[p]>0&&pair(p,c);
+function brain(p){const lg=legal(p),led=p==G.lead?null:G.tab[G.lead];
+ const cost=c=>pts(c)*10+c.r+(c.s==G.ts?200:0)+((c.r==2||c.r==3)&&pair(p,c)?30:0);
+ const asc=a=>[...a].sort((x,y)=>cost(x)-cost(y));
+ if(!led){const an=lg.filter(c=>canAnn(p,c)).sort((a,b)=>(b.s==G.ts)-(a.s==G.ts)||a.r-b.r);
+  if(an.length)return{c:an[0],ann:1,why:'Mit am Paar sagsch glei Augen a (Trompf 40, sonscht 20). Spiel dr Ober aus, dr isch weniger wert wie dr König.'};
+  if(!G.st.length)return{c:asc(lg).pop(),ann:0,why:'Em Endspiel zählet starke Karta – hol dr Stich.'};
+  return{c:asc(lg)[0],ann:0,why:'Spiel früah a nieders Kärtle aus, no verschenksch koine Augen.'}}
+ const w=asc(lg.filter(c=>(c.s==led.s&&c.r>led.r)||(c.s!=led.s&&c.s==G.ts)));
+ if(w.length&&(pts(led)>=4||!G.st.length||(w[0].s!=G.ts&&pts(led)>=2)))return{c:w[0],ann:0,why:'Do lohnt sich dr Stich – nemm en mit dr kleinschte Karta, die gwinnt.'};
+ return{c:asc(lg)[0],ann:0,why:'Dr Stich lohnt koin Aufwand – wirf a nieders Kärtle her.'}}
+function ai(p){const r=brain(p);let c=r.c;if(L==1&&!r.ann&&Math.random()<.3){const lg=legal(p);c=lg[Math.random()*lg.length|0]}play(p,c,r.ann)}
+function play(p,c,a){const h=G.h[p];h.splice(h.indexOf(c),1);G.tab[p]=c;G.hint=null;
+ if(a){const v=c.s==G.ts?40:20;G.sc[p]+=v;say(`${nm(p)} ${verb(p,'sagst','sagt')} ${SU[c.s]}-Paar an: +${v} Augen.`);if(G.sc[p]>=101)return fin(p)}
+ if(G.tab[1-p]){G.res=true;render();later(resolve,1100)}else next()}
+function resolve(){const l=G.lead,a=G.tab[l],b=G.tab[1-l],w=(b.s==a.s&&b.r>a.r)||(b.s!=a.s&&b.s==G.ts)?1-l:l,v=pts(a)+pts(b),last=!G.h[0].length&&!G.h[1].length;
+ G.log.unshift(`Stich ${G.tr[0]+G.tr[1]+1}: ${SG[a.s]}${RL[a.r]} (${pts(a)}, ${nm(l)}) + ${SG[b.s]}${RL[b.r]} (${pts(b)}, ${nm(1-l)}) → ${nm(w)} +${v+(last?10:0)} · ${b.s==a.s?(w!=l?'höhere Karta':'Ausspieler höher'):(w!=l?'Trompf sticht':'ned bedient')}`);
+ G.sc[w]+=v+(last?10:0);G.tr[w]++;G.res=false;G.tab=[null,null];G.lead=w;
+ say(`${nm(w)} ${verb(w,'gewinnst','gewinnt')} den Stich: +${v}${last?' und 10 für den letzten Stich':''}.`);
+ if(G.sc[w]>=101)return fin(w);
+ if(last)return fin(G.sc[0]>G.sc[1]?0:G.sc[1]>G.sc[0]?1:w);
+ if(G.st.length){G.h[w].push(G.st.shift());G.h[1-w].push(G.st.shift());srt(G.h[0]);srt(G.h[1])}
+ next()}
+function fin(w){G.over=true;G.res=false;G.win=w;render();showEnd()}
+function next(){render();if(G.over)return;const p=actor();
+ if(L==3&&shown!=p){G.cur=true;render();return modal(`<h3>${nm(p)} ist dran</h3><p>Gerät übergeben, dann tippen.</p>`,[['Aufdecken',()=>{shown=p;G.cur=false;render()}]])}
+ if(!hu(p))return later(()=>ai(p),900);
+ if(L==1)coach(p)}
+function coach(p){const led=G.tab[G.lead],h=G.h[p];
+ const t=(id,x,e='')=>{if(seen[id])return 0;seen[id]=1;modal(`<h3>Lektion</h3><p>${x}</p>${e}`,[['Verstanda']]);return 1};
+ const fe=(led,h)=>{const w=h.filter(c=>(c.s==led.s&&c.r>led.r)||(c.s!=led.s&&c.s==G.ts));return w.length?ex([[led.s,led.r,'Computer'],...w.slice(0,3).map(c=>[c.s,c.r,'sticht'])],'Mit dene Karta kosch en Stich hola.'):ex([[led.s,led.r,'Computer']],'Du hosch grad koi Karta, die sticht – gib a kleine her.')};
+ if(!G.st.length&&t('empty','Dr Stapel isch leer – jetzt wird’s ernscht: Du muasch Farb bediena ond, wenn’s goht, mit ra höhere Karta stecha. Kosch it bediena, muasch trompfa.',ex(legal(p).map(c=>[c.s,c.r,'erlaubt']),'Bloß die Karta därfsch spiela – d andere send abdunkelt.')))return;
+ if(!led){const pr=h.some(c=>pair(p,c)),pe=()=>ex(h.filter(c=>pair(p,c)).map(c=>[c.s,c.r,RN[c.r]]));
+  pr&&G.tr[p]?t('pair','Du hosch a Paar (König ond Ober vo dr gleiche Farb)! Spiel oine vo dene zwoi aus ond tipp noch uff „Ansagen“: 20 Augen, en Trompf 40.',pe())
+  :pr?t('pair0','Du hosch König ond Ober vo dr gleiche Farb – a Paar. Ansaga därfsch aber erscht, wenn d en Stich gmacht hosch. Heb d Karta so lang uf.',pe())
+  :t('lead','Du spielsch aus: Tipp uff a Karta. Am Afang spielsch am beschta nieder Karta (7, Unter), dass d koine Augen verschenksch.',ex(h.slice().sort((a,b)=>pts(a)-pts(b)).slice(0,2).map(c=>[c.s,c.r,pts(c)+' Augen']),'Zom Beispiel de zwoi hosch grad am wenigschte wert.'))}
+ else t('follow',`Dr Computer hot ${cn(led)} ausgspielt. Dr Stapel isch no it leer, also därfsch spiela, was d witt. Wotsch dr Stich? No nemm a höhere Karta vo dr gleiche Farb odr en Trompf (${SG[G.ts]} ${SU[G.ts]}).`,fe(led,h))}
+function onPick(i){if(!G||G.over||G.res||G.cur)return;const p=L==4?me:L==3?shown:0;if(actor()!=p)return;const c=G.h[p][i];
+ if(!legal(p).includes(c)){say('Des gohtn it: Wenn dr Stapel leer isch, muasch Farb bediena ond stecha, sonscht trompfa.');return}
+ G.hint=null;
+ if(canAnn(p,c)){const v=c.s==G.ts?40:20;return modal(`<h3>Paar ansaga?</h3><p>Du hosch König ond Ober vo ${SU[c.s]}${c.s==G.ts?' (Trompf)':''}. Sagsch des a, kriagsch glei <b>${v} Augen</b> gschenkt. Du spielsch oine vo de zwoi aus, die ander bleibt uff dr Hand.</p>${ex([[c.s,3,'König'],[c.s,2,'Ober']],'Paar = '+v+' Augen')}`,[['Ansaga +'+v,()=>go(p,c,1)],['Nur ausspiela',()=>go(p,c,0)]])}
+ go(p,c,0)}
+function hint(){if(!G||G.over||G.res||actor()!=0)return;const r=brain(0);G.hint=r.c;say(`Tipp: ${cn(r.c)}${r.ann?' ausspiela ond ansaga':''}. ${r.why}`);render()}
+function render(){if(!G)return;sync();const v=L==4?me:L==3&&shown>=0?shown:0,a=!G.over&&!G.res&&!G.cur&&actor()==v&&hu(v),lg=a?legal(v):[];
+ $('bar').innerHTML=[0,1].map(p=>`<div>${nm(p)}<b>${G.sc[p]}</b>${G.tr[p]} Stiche</div>`).join(`<div>Trumpf<b style="color:${SC[G.ts]}">${SG[G.ts]}</b>Stapel ${G.st.length}</div>`);
+ $('top').innerHTML=`<span>${nm(1-v)}:</span>`+G.h[1-v].map(()=>'<div class="bk"></div>').join('');
+ const sl=p=>`<div class="slot">${G.tab[p]?card(G.tab[p],'sm'):'<div class="c sm" style="opacity:.25;cursor:default"></div>'}<div>${nm(p)}</div></div>`;
+ $('tbl').innerHTML=sl(1-v)+sl(v);
+ if(L==4)$('msg').innerHTML=(G.over||G.res?'':(actor()==me?'Du bisch dra, '+nm(me)+'.':nm(actor())+' isch dra. Mir wartet.')+'<br>')+'<small>'+G.msg+'</small>';else $('msg').textContent=G.msg;
+ $('log').innerHTML=G.log.length?'<b>Stich-Protokoll</b><br>'+G.log.join('<br>'):'';
+ $('hand').innerHTML=G.cur?G.h[v].map(()=>'<div class="bk bg"></div>').join(''):G.h[v].map((c,i)=>card(c,(lg.includes(c)?'':'dis')+(c==G.hint?' hint':''),` data-i="${i}"`)).join('')}
+$('hand').onclick=e=>{const b=e.target.closest('[data-i]');if(b)onPick(+b.dataset.i)};
+setL(1);
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
